@@ -215,6 +215,7 @@ class HO_Tracking {
      */
     private function parse_csv($file_path) {
         $data = array();
+        $skipped_rows = 0;
         
         if (($handle = fopen($file_path, 'r')) !== false) {
             $headers = fgetcsv($handle);
@@ -228,13 +229,23 @@ class HO_Tracking {
             $headers = array_map('trim', $headers);
             $headers = array_map('strtolower', $headers);
             
+            $row_number = 1; // Start from 1 after header
             while (($row = fgetcsv($handle)) !== false) {
+                $row_number++;
                 if (count($row) === count($headers)) {
                     $data[] = array_combine($headers, $row);
+                } else {
+                    $skipped_rows++;
+                    error_log(sprintf('HO Tracking: Skipped row %d due to column count mismatch (expected %d, got %d)', 
+                        $row_number, count($headers), count($row)));
                 }
             }
             
             fclose($handle);
+            
+            if ($skipped_rows > 0) {
+                error_log(sprintf('HO Tracking: Skipped %d rows due to data quality issues', $skipped_rows));
+            }
         } else {
             return new WP_Error('file_error', __('Could not read file', 'ho-tracking'));
         }
@@ -265,10 +276,24 @@ class HO_Tracking {
             $headers = array_map('strtolower', $headers);
             
             $data = array();
+            $skipped_rows = 0;
+            $row_number = 1; // Start from 1 after header
+            
             foreach ($rows as $row) {
+                $row_number++;
                 if (!empty(array_filter($row))) {
-                    $data[] = array_combine($headers, $row);
+                    if (count($row) === count($headers)) {
+                        $data[] = array_combine($headers, $row);
+                    } else {
+                        $skipped_rows++;
+                        error_log(sprintf('HO Tracking: Skipped row %d due to column count mismatch (expected %d, got %d)', 
+                            $row_number, count($headers), count($row)));
+                    }
                 }
+            }
+            
+            if ($skipped_rows > 0) {
+                error_log(sprintf('HO Tracking: Skipped %d rows due to data quality issues', $skipped_rows));
             }
             
             return $data;
@@ -283,7 +308,9 @@ class HO_Tracking {
     private function clear_tracking_data() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
-        $wpdb->query("TRUNCATE TABLE $table_name");
+        // Sanitize table name and use DELETE for safety
+        $table_name = esc_sql($table_name);
+        $wpdb->query("DELETE FROM `$table_name`");
     }
     
     /**
