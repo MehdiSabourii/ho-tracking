@@ -88,7 +88,7 @@
                 type: 'POST',
                 data: {
                     action: 'ho_tracking_save_settings',
-                    nonce: hoTracking.nonce,
+                    nonce: hoTracking.settingsNonce,
                     visible_columns: visibleColumns
                 },
                 success: function(response) {

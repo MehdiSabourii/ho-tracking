@@ -151,7 +151,8 @@ class HO_Tracking {
         
         wp_localize_script('ho-tracking-admin', 'hoTracking', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('ho_tracking_nonce')
+            'nonce' => wp_create_nonce('ho_tracking_nonce'),
+            'settingsNonce' => wp_create_nonce('ho_tracking_settings_nonce')
         ));
     }
     
@@ -456,7 +457,7 @@ class HO_Tracking {
      * Save settings via AJAX
      */
     public function save_settings() {
-        check_ajax_referer('ho_tracking_nonce', 'nonce');
+        check_ajax_referer('ho_tracking_settings_nonce', 'nonce');
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));

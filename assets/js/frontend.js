@@ -83,7 +83,7 @@
             // Add headers for visible columns
             $.each(visibleColumns, function(index, column) {
                 if (columnLabels[column]) {
-                    html += '<th>' + columnLabels[column] + '</th>';
+                    html += '<th>' + escapeHtml(columnLabels[column]) + '</th>';
                 }
             });
             
@@ -120,7 +120,7 @@
                                 break;
                         }
                         
-                        html += '<td data-label="' + label + '">' + value + '</td>';
+                        html += '<td data-label="' + escapeHtml(label) + '">' + value + '</td>';
                     }
                 });
                 
