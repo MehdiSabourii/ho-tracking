@@ -155,7 +155,7 @@ class HO_Tracking {
     /**
      * Localize frontend script with AJAX data
      */
-    private function localize_frontend_script() {
+    protected function localize_frontend_script() {
         wp_localize_script('ho-tracking-frontend', 'hoTracking', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('ho_tracking_search_nonce')

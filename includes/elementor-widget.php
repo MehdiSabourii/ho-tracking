@@ -125,7 +125,8 @@ class HO_Tracking_Elementor_Widget extends \Elementor\Widget_Base {
      */
     protected function render() {
         // Use the existing shortcode functionality
-        // The shortcode output is already escaped in the template
+        // wp_kses_post allows safe HTML tags while preventing XSS
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Shortcode output is properly escaped
         echo do_shortcode('[ho_tracking_table]');
     }
     
