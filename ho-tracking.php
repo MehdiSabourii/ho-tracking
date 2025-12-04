@@ -149,6 +149,13 @@ class HO_Tracking {
         wp_enqueue_style('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/css/frontend.css', array(), HO_TRACKING_VERSION);
         wp_enqueue_script('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), HO_TRACKING_VERSION, true);
         
+        $this->localize_frontend_script();
+    }
+    
+    /**
+     * Localize frontend script with AJAX data
+     */
+    private function localize_frontend_script() {
         wp_localize_script('ho-tracking-frontend', 'hoTracking', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('ho_tracking_search_nonce')
@@ -471,11 +478,7 @@ class HO_Tracking {
         // Only enqueue if not already enqueued
         if (!wp_script_is('ho-tracking-frontend', 'enqueued')) {
             wp_enqueue_script('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), HO_TRACKING_VERSION, true);
-            
-            wp_localize_script('ho-tracking-frontend', 'hoTracking', array(
-                'ajaxurl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('ho_tracking_search_nonce')
-            ));
+            $this->localize_frontend_script();
         }
     }
 }

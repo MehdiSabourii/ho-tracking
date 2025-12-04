@@ -125,6 +125,7 @@ class HO_Tracking_Elementor_Widget extends \Elementor\Widget_Base {
      */
     protected function render() {
         // Use the existing shortcode functionality
+        // The shortcode output is already escaped in the template
         echo do_shortcode('[ho_tracking_table]');
     }
     
