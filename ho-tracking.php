@@ -158,32 +158,114 @@ class HO_Tracking {
         
         if (!current_user_can('manage_options')) {
             wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));
+            return;
         }
         
-        if (!isset($_FILES['tracking_file'])) {
-            wp_send_json_error(array('message' => __('No file uploaded', 'ho-tracking')));
+        if (!isset($_FILES['tracking_file']) || empty($_FILES['tracking_file']['name'])) {
+            wp_send_json_error(array('message' => __('No file uploaded. Please select a file.', 'ho-tracking')));
+            return;
         }
         
         $file = $_FILES['tracking_file'];
+        
+        // Check for upload errors
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $error_message = $this->get_upload_error_message($file['error']);
+            wp_send_json_error(array('message' => $error_message));
+            return;
+        }
+        
+        // Validate file size (max 10MB)
+        $max_size = 10 * 1024 * 1024; // 10MB
+        if ($file['size'] > $max_size) {
+            wp_send_json_error(array('message' => __('File size exceeds maximum allowed size (10MB).', 'ho-tracking')));
+            return;
+        }
+        
+        if ($file['size'] === 0) {
+            wp_send_json_error(array('message' => __('The uploaded file is empty.', 'ho-tracking')));
+            return;
+        }
+        
         $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         
-        // Check if Excel support is available
+        // Validate file extension
+        if (!in_array($file_ext, array('csv', 'xls', 'xlsx'))) {
+            wp_send_json_error(array('message' => __('Invalid file format. Please upload CSV, XLS, or XLSX file.', 'ho-tracking')));
+            return;
+        }
+        
+        // Validate MIME type
+        $allowed_mime_types = array(
+            'text/csv',
+            'text/plain',
+            'application/csv',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        if (!in_array($mime_type, $allowed_mime_types) && !in_array($file_ext, array('csv', 'xls', 'xlsx'))) {
+            wp_send_json_error(array('message' => __('Invalid file type detected. Please upload a valid CSV or Excel file.', 'ho-tracking')));
+            return;
+        }
+        
+        // Check if Excel support is available for xls/xlsx files
         $excel_supported = class_exists('PhpOffice\PhpSpreadsheet\IOFactory') || 
                           file_exists(HO_TRACKING_PLUGIN_DIR . 'vendor/autoload.php');
         
         if (!$excel_supported && in_array($file_ext, array('xls', 'xlsx'))) {
             wp_send_json_error(array('message' => __('Excel support is not available. Please install Composer dependencies or use CSV format.', 'ho-tracking')));
+            return;
         }
         
-        if (!in_array($file_ext, array('csv', 'xls', 'xlsx'))) {
-            wp_send_json_error(array('message' => __('Invalid file format. Please upload CSV, XLS, or XLSX file.', 'ho-tracking')));
+        // Use WordPress file handling
+        if (!function_exists('wp_handle_upload')) {
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
         }
+        
+        // Override upload mimes filter temporarily
+        add_filter('upload_mimes', array($this, 'allow_tracking_file_mimes'));
+        
+        $upload_overrides = array(
+            'test_form' => false,
+            'mimes' => array(
+                'csv' => 'text/csv',
+                'xls' => 'application/vnd.ms-excel',
+                'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        );
+        
+        $uploaded_file = wp_handle_upload($file, $upload_overrides);
+        
+        remove_filter('upload_mimes', array($this, 'allow_tracking_file_mimes'));
+        
+        if (isset($uploaded_file['error'])) {
+            wp_send_json_error(array('message' => $uploaded_file['error']));
+            return;
+        }
+        
+        $file_path = $uploaded_file['file'];
         
         // Parse the file
-        $data = $this->parse_file($file['tmp_name'], $file_ext);
+        $data = $this->parse_file($file_path, $file_ext);
+        
+        // Clean up uploaded file after parsing
+        if (file_exists($file_path)) {
+            @unlink($file_path);
+        }
         
         if (is_wp_error($data)) {
             wp_send_json_error(array('message' => $data->get_error_message()));
+            return;
+        }
+        
+        if (empty($data)) {
+            wp_send_json_error(array('message' => __('No valid data found in the uploaded file.', 'ho-tracking')));
+            return;
         }
         
         // Clear existing data if requested
@@ -194,9 +276,47 @@ class HO_Tracking {
         // Insert data
         $inserted = $this->insert_tracking_data($data);
         
+        if ($inserted === 0) {
+            wp_send_json_error(array('message' => __('No records were imported. Please check your file format and data.', 'ho-tracking')));
+            return;
+        }
+        
         wp_send_json_success(array(
             'message' => sprintf(__('%d records imported successfully', 'ho-tracking'), $inserted)
         ));
+    }
+    
+    /**
+     * Get user-friendly upload error message
+     */
+    private function get_upload_error_message($error_code) {
+        switch ($error_code) {
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                return __('The uploaded file exceeds the maximum allowed size.', 'ho-tracking');
+            case UPLOAD_ERR_PARTIAL:
+                return __('The file was only partially uploaded. Please try again.', 'ho-tracking');
+            case UPLOAD_ERR_NO_FILE:
+                return __('No file was uploaded.', 'ho-tracking');
+            case UPLOAD_ERR_NO_TMP_DIR:
+                return __('Missing temporary folder. Please contact the administrator.', 'ho-tracking');
+            case UPLOAD_ERR_CANT_WRITE:
+                return __('Failed to write file to disk. Please contact the administrator.', 'ho-tracking');
+            case UPLOAD_ERR_EXTENSION:
+                return __('File upload stopped by extension. Please contact the administrator.', 'ho-tracking');
+            default:
+                return __('Unknown upload error occurred.', 'ho-tracking');
+        }
+    }
+    
+    /**
+     * Allow tracking file MIME types
+     */
+    public function allow_tracking_file_mimes($mimes) {
+        $mimes['csv'] = 'text/csv';
+        $mimes['xls'] = 'application/vnd.ms-excel';
+        $mimes['xlsx'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        return $mimes;
     }
     
     /**
@@ -217,37 +337,82 @@ class HO_Tracking {
         $data = array();
         $skipped_rows = 0;
         
-        if (($handle = fopen($file_path, 'r')) !== false) {
-            $headers = fgetcsv($handle);
-            
-            if (!$headers) {
-                fclose($handle);
-                return new WP_Error('parse_error', __('Invalid CSV format', 'ho-tracking'));
-            }
-            
-            // Normalize headers
-            $headers = array_map('trim', $headers);
-            $headers = array_map('strtolower', $headers);
-            
-            $row_number = 1; // Start from 1 after header
-            while (($row = fgetcsv($handle)) !== false) {
-                $row_number++;
-                if (count($row) === count($headers)) {
-                    $data[] = array_combine($headers, $row);
-                } else {
-                    $skipped_rows++;
-                    error_log(sprintf('HO Tracking: Skipped row %d due to column count mismatch (expected %d, got %d)', 
-                        $row_number, count($headers), count($row)));
-                }
-            }
-            
-            fclose($handle);
-            
-            if ($skipped_rows > 0) {
-                error_log(sprintf('HO Tracking: Skipped %d rows due to data quality issues', $skipped_rows));
-            }
+        if (!file_exists($file_path) || !is_readable($file_path)) {
+            return new WP_Error('file_error', __('Cannot read the uploaded file.', 'ho-tracking'));
+        }
+        
+        $handle = fopen($file_path, 'r');
+        
+        if ($handle === false) {
+            return new WP_Error('file_error', __('Could not open file for reading.', 'ho-tracking'));
+        }
+        
+        // Detect file encoding and handle BOM
+        $bom = fread($handle, 3);
+        if ($bom === "\xEF\xBB\xBF") {
+            // UTF-8 BOM detected, continue from current position
         } else {
-            return new WP_Error('file_error', __('Could not read file', 'ho-tracking'));
+            // No BOM, rewind to start
+            rewind($handle);
+        }
+        
+        $headers = fgetcsv($handle, 0, ',');
+        
+        // Try semicolon delimiter if comma fails
+        if ($headers === false || count($headers) <= 1) {
+            rewind($handle);
+            // Skip BOM again if present
+            if ($bom === "\xEF\xBB\xBF") {
+                fread($handle, 3);
+            }
+            $headers = fgetcsv($handle, 0, ';');
+        }
+        
+        if (!$headers || count($headers) === 0) {
+            fclose($handle);
+            return new WP_Error('parse_error', __('Invalid CSV format. Could not read headers.', 'ho-tracking'));
+        }
+        
+        // Normalize headers
+        $headers = array_map('trim', $headers);
+        $headers = array_map('strtolower', $headers);
+        
+        // Remove empty headers
+        $headers = array_filter($headers, function($h) { return !empty($h); });
+        
+        if (empty($headers)) {
+            fclose($handle);
+            return new WP_Error('parse_error', __('CSV file has no valid headers.', 'ho-tracking'));
+        }
+        
+        // Re-index headers array
+        $headers = array_values($headers);
+        
+        $row_number = 1; // Start from 1 after header
+        while (($row = fgetcsv($handle, 0, ',')) !== false || ($row = fgetcsv($handle, 0, ';')) !== false) {
+            $row_number++;
+            
+            // Skip empty rows
+            if (empty(array_filter($row))) {
+                continue;
+            }
+            
+            // Trim all values
+            $row = array_map('trim', $row);
+            
+            if (count($row) === count($headers)) {
+                $data[] = array_combine($headers, $row);
+            } else {
+                $skipped_rows++;
+                error_log(sprintf('HO Tracking: Skipped row %d due to column count mismatch (expected %d, got %d)', 
+                    $row_number, count($headers), count($row)));
+            }
+        }
+        
+        fclose($handle);
+        
+        if ($skipped_rows > 0) {
+            error_log(sprintf('HO Tracking: Skipped %d rows due to data quality issues', $skipped_rows));
         }
         
         return $data;
@@ -257,23 +422,42 @@ class HO_Tracking {
      * Parse Excel file
      */
     private function parse_excel($file_path) {
+        if (!file_exists($file_path) || !is_readable($file_path)) {
+            return new WP_Error('file_error', __('Cannot read the uploaded file.', 'ho-tracking'));
+        }
+        
         // Check if PhpSpreadsheet is available
         if (!class_exists('PhpOffice\PhpSpreadsheet\IOFactory')) {
             require_once HO_TRACKING_PLUGIN_DIR . 'includes/phpspreadsheet-loader.php';
         }
         
+        if (!class_exists('PhpOffice\PhpSpreadsheet\IOFactory')) {
+            return new WP_Error('library_error', __('PhpSpreadsheet library is not available. Please install Composer dependencies or use CSV format.', 'ho-tracking'));
+        }
+        
         try {
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file_path);
             $worksheet = $spreadsheet->getActiveSheet();
-            $rows = $worksheet->toArray();
+            $rows = $worksheet->toArray(null, true, true, true);
             
             if (empty($rows)) {
                 return new WP_Error('parse_error', __('Empty Excel file', 'ho-tracking'));
             }
             
-            $headers = array_shift($rows);
-            $headers = array_map('trim', $headers);
-            $headers = array_map('strtolower', $headers);
+            // Get the first row as headers
+            $header_row = array_shift($rows);
+            $headers = array();
+            
+            // Extract and normalize headers
+            foreach ($header_row as $cell) {
+                if ($cell !== null && trim($cell) !== '') {
+                    $headers[] = strtolower(trim($cell));
+                }
+            }
+            
+            if (empty($headers)) {
+                return new WP_Error('parse_error', __('Excel file has no valid headers.', 'ho-tracking'));
+            }
             
             $data = array();
             $skipped_rows = 0;
@@ -281,14 +465,28 @@ class HO_Tracking {
             
             foreach ($rows as $row) {
                 $row_number++;
-                if (!empty(array_filter($row))) {
-                    if (count($row) === count($headers)) {
-                        $data[] = array_combine($headers, $row);
-                    } else {
-                        $skipped_rows++;
-                        error_log(sprintf('HO Tracking: Skipped row %d due to column count mismatch (expected %d, got %d)', 
-                            $row_number, count($headers), count($row)));
-                    }
+                
+                // Convert row to array of values
+                $row_values = array_values($row);
+                
+                // Skip empty rows
+                if (empty(array_filter($row_values, function($v) { return $v !== null && trim($v) !== ''; }))) {
+                    continue;
+                }
+                
+                // Trim all values and take only the number of columns we have headers for
+                $row_data = array();
+                for ($i = 0; $i < count($headers); $i++) {
+                    $value = isset($row_values[$i]) && $row_values[$i] !== null ? trim($row_values[$i]) : '';
+                    $row_data[] = $value;
+                }
+                
+                if (count($row_data) === count($headers)) {
+                    $data[] = array_combine($headers, $row_data);
+                } else {
+                    $skipped_rows++;
+                    error_log(sprintf('HO Tracking: Skipped row %d due to column count mismatch (expected %d, got %d)', 
+                        $row_number, count($headers), count($row_data)));
                 }
             }
             
@@ -298,7 +496,8 @@ class HO_Tracking {
             
             return $data;
         } catch (Exception $e) {
-            return new WP_Error('parse_error', $e->getMessage());
+            error_log('HO Tracking Excel parsing error: ' . $e->getMessage());
+            return new WP_Error('parse_error', sprintf(__('Error parsing Excel file: %s', 'ho-tracking'), $e->getMessage()));
         }
     }
     
@@ -320,8 +519,9 @@ class HO_Tracking {
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
         $inserted = 0;
+        $skipped = 0;
         
-        foreach ($data as $row) {
+        foreach ($data as $row_index => $row) {
             // Map common column names
             $tracking_code = '';
             $recipient_name = '';
@@ -332,69 +532,81 @@ class HO_Tracking {
             
             // Try to find tracking code
             foreach (array('tracking_code', 'tracking', 'code', 'کد رهگیری', 'کد') as $key) {
-                if (isset($row[$key]) && !empty($row[$key])) {
-                    $tracking_code = sanitize_text_field($row[$key]);
+                if (isset($row[$key]) && !empty(trim($row[$key]))) {
+                    $tracking_code = sanitize_text_field(trim($row[$key]));
                     break;
                 }
             }
             
+            // Skip rows without tracking code
+            if (empty($tracking_code)) {
+                $skipped++;
+                error_log(sprintf('HO Tracking: Skipped data row %d - no tracking code found', $row_index + 2)); // +2 for header and 0-index
+                continue;
+            }
+            
             // Try to find recipient name
             foreach (array('recipient_name', 'recipient', 'name', 'نام', 'گیرنده') as $key) {
-                if (isset($row[$key]) && !empty($row[$key])) {
-                    $recipient_name = sanitize_text_field($row[$key]);
+                if (isset($row[$key]) && !empty(trim($row[$key]))) {
+                    $recipient_name = sanitize_text_field(trim($row[$key]));
                     break;
                 }
             }
             
             // Try to find status
             foreach (array('status', 'وضعیت') as $key) {
-                if (isset($row[$key]) && !empty($row[$key])) {
-                    $status = sanitize_text_field($row[$key]);
+                if (isset($row[$key]) && !empty(trim($row[$key]))) {
+                    $status = sanitize_text_field(trim($row[$key]));
                     break;
                 }
             }
             
             // Try to find dates
             foreach (array('date_sent', 'sent_date', 'تاریخ ارسال') as $key) {
-                if (isset($row[$key]) && !empty($row[$key])) {
-                    $date_sent = sanitize_text_field($row[$key]);
+                if (isset($row[$key]) && !empty(trim($row[$key]))) {
+                    $date_sent = sanitize_text_field(trim($row[$key]));
                     break;
                 }
             }
             
             foreach (array('date_delivered', 'delivered_date', 'تاریخ تحویل') as $key) {
-                if (isset($row[$key]) && !empty($row[$key])) {
-                    $date_delivered = sanitize_text_field($row[$key]);
+                if (isset($row[$key]) && !empty(trim($row[$key]))) {
+                    $date_delivered = sanitize_text_field(trim($row[$key]));
                     break;
                 }
             }
             
             // Try to find notes
             foreach (array('notes', 'note', 'توضیحات') as $key) {
-                if (isset($row[$key]) && !empty($row[$key])) {
-                    $notes = sanitize_textarea_field($row[$key]);
+                if (isset($row[$key]) && !empty(trim($row[$key]))) {
+                    $notes = sanitize_textarea_field(trim($row[$key]));
                     break;
                 }
             }
             
-            if (!empty($tracking_code)) {
-                $result = $wpdb->insert(
-                    $table_name,
-                    array(
-                        'tracking_code' => $tracking_code,
-                        'recipient_name' => $recipient_name,
-                        'status' => $status,
-                        'date_sent' => $date_sent,
-                        'date_delivered' => $date_delivered,
-                        'notes' => $notes
-                    ),
-                    array('%s', '%s', '%s', '%s', '%s', '%s')
-                );
-                
-                if ($result) {
-                    $inserted++;
-                }
+            // Insert into database
+            $result = $wpdb->insert(
+                $table_name,
+                array(
+                    'tracking_code' => $tracking_code,
+                    'recipient_name' => $recipient_name,
+                    'status' => $status,
+                    'date_sent' => $date_sent,
+                    'date_delivered' => $date_delivered,
+                    'notes' => $notes
+                ),
+                array('%s', '%s', '%s', '%s', '%s', '%s')
+            );
+            
+            if ($result) {
+                $inserted++;
+            } else {
+                error_log(sprintf('HO Tracking: Failed to insert tracking code %s - Error: %s', $tracking_code, $wpdb->last_error));
             }
+        }
+        
+        if ($skipped > 0) {
+            error_log(sprintf('HO Tracking: Skipped %d rows due to missing tracking codes', $skipped));
         }
         
         return $inserted;
