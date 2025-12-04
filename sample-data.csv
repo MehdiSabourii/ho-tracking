@@ -1,0 +1,6 @@
+tracking_code,recipient_name,status,date_sent,date_delivered,notes
+TR123456789,John Doe,Delivered,2024-01-15,2024-01-18,Package delivered successfully
+TR987654321,Jane Smith,In Transit,2024-01-20,,On the way to destination
+TR456789123,Ahmad Rezaei,Pending,2024-01-22,,Awaiting shipment
+TR789123456,Sara Johnson,Delivered,2024-01-10,2024-01-14,Left at front door
+TR321654987,محمد احمدی,تحویل شده,2024-01-12,2024-01-16,تحویل با موفقیت انجام شد
