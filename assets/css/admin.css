@@ -2,12 +2,29 @@
  * Admin styles for HO Tracking
  */
 
+/* CSS Variables for consistent theming */
+:root {
+    --ho-primary-color: #0073aa;
+    --ho-success-color: #28a745;
+    --ho-success-bg: #d4edda;
+    --ho-success-text: #155724;
+    --ho-error-color: #dc3545;
+    --ho-error-bg: #f8d7da;
+    --ho-error-text: #721c24;
+    --ho-border-color: #e5e5e5;
+    --ho-bg-light: #f5f5f5;
+    --ho-text-color: #333;
+    --ho-text-muted: #666;
+    --ho-gradient-start: #667eea;
+    --ho-gradient-end: #764ba2;
+}
+
 /* General Admin Styles */
 .ho-tracking-admin .card {
     max-width: 800px;
     margin-bottom: 20px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e5e5e5;
+    border: 1px solid var(--ho-border-color);
 }
 
 .ho-tracking-admin .card h2,
@@ -40,19 +57,19 @@
 }
 
 #upload-message.success {
-    background-color: #d4edda;
-    border-left-color: #28a745;
-    color: #155724;
+    background-color: var(--ho-success-bg);
+    border-left-color: var(--ho-success-color);
+    color: var(--ho-success-text);
 }
 
 #upload-message.error {
-    background-color: #f8d7da;
-    border-left-color: #dc3545;
-    color: #721c24;
+    background-color: var(--ho-error-bg);
+    border-left-color: var(--ho-error-color);
+    color: var(--ho-error-text);
 }
 
 .ho-tracking-admin code {
-    background: #f5f5f5;
+    background: var(--ho-bg-light);
     padding: 4px 8px;
     border-radius: 3px;
     font-size: 14px;
@@ -112,7 +129,7 @@
 }
 
 .stat-box {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--ho-gradient-start) 0%, var(--ho-gradient-end) 100%);
     color: white;
     padding: 20px 30px;
     border-radius: 8px;
@@ -138,7 +155,7 @@
 .ho-tracking-table {
     margin-top: 20px;
     background: white;
-    border: 1px solid #e5e5e5;
+    border: 1px solid var(--ho-border-color);
 }
 
 .ho-tracking-table th,
@@ -174,8 +191,8 @@
 
 .status-delivered,
 .status-تحویل-شده {
-    background: #d4edda;
-    color: #155724;
+    background: var(--ho-success-bg);
+    color: var(--ho-success-text);
 }
 
 .status-in-transit,
@@ -186,8 +203,8 @@
 
 .status-pending,
 .status-در-انتظار {
-    background: #f8d7da;
-    color: #721c24;
+    background: var(--ho-error-bg);
+    color: var(--ho-error-text);
 }
 
 /* No Records Message */
@@ -244,7 +261,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 20px 25px;
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 1px solid var(--ho-border-color);
 }
 
 .modal-header h2 {
@@ -259,13 +276,13 @@
     line-height: 1;
     cursor: pointer;
     padding: 0;
-    color: #666;
+    color: var(--ho-text-muted);
     width: 30px;
     height: 30px;
 }
 
 .modal-close:hover {
-    color: #333;
+    color: var(--ho-text-color);
 }
 
 .modal-content .form-table {
@@ -274,7 +291,7 @@
 
 .modal-footer {
     padding: 20px 25px;
-    border-top: 1px solid #e5e5e5;
+    border-top: 1px solid var(--ho-border-color);
     display: flex;
     gap: 10px;
     align-items: center;
@@ -317,7 +334,7 @@
 }
 
 .status-active {
-    color: #28a745;
+    color: var(--ho-success-color);
     font-weight: 600;
 }
 
@@ -344,7 +361,7 @@
 }
 
 .shortcode-box {
-    background: #f5f5f5;
+    background: var(--ho-bg-light);
     padding: 15px;
     border-radius: 4px;
     display: flex;
@@ -364,8 +381,8 @@
 }
 
 .button-danger {
-    background: #dc3545;
-    border-color: #dc3545;
+    background: var(--ho-error-color);
+    border-color: var(--ho-error-color);
     color: white;
 }
 
@@ -393,15 +410,15 @@
 }
 
 .admin-message.success {
-    background: #d4edda;
-    border-left: 4px solid #28a745;
-    color: #155724;
+    background: var(--ho-success-bg);
+    border-left: 4px solid var(--ho-success-color);
+    color: var(--ho-success-text);
 }
 
 .admin-message.error {
-    background: #f8d7da;
-    border-left: 4px solid #dc3545;
-    color: #721c24;
+    background: var(--ho-error-bg);
+    border-left: 4px solid var(--ho-error-color);
+    color: var(--ho-error-text);
 }
 
 @keyframes slideIn {

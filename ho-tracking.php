@@ -536,6 +536,10 @@ class HO_Tracking {
         }
         
         $record_ids = isset($_POST['record_ids']) ? array_map('intval', $_POST['record_ids']) : array();
+        // Filter out any zero or invalid values
+        $record_ids = array_filter($record_ids, function($id) {
+            return $id > 0;
+        });
         
         if (empty($record_ids)) {
             wp_send_json_error(array('message' => __('No records selected', 'ho-tracking')));
@@ -544,16 +548,12 @@ class HO_Tracking {
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
         
-        // Delete records one by one for better security
-        $deleted = 0;
-        foreach ($record_ids as $id) {
-            $result = $wpdb->delete($table_name, array('id' => $id), array('%d'));
-            if ($result) {
-                $deleted++;
-            }
-        }
+        // Use optimized single query with proper placeholders
+        $placeholders = implode(',', array_fill(0, count($record_ids), '%d'));
+        $query = "DELETE FROM $table_name WHERE id IN ($placeholders)";
+        $deleted = $wpdb->query($wpdb->prepare($query, $record_ids));
         
-        if ($deleted > 0) {
+        if ($deleted) {
             wp_send_json_success(array('message' => sprintf(__('%d records deleted successfully', 'ho-tracking'), $deleted)));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete records', 'ho-tracking')));
