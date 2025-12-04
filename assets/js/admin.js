@@ -5,6 +5,12 @@
 (function($) {
     'use strict';
     
+    // Check if hoTracking object exists
+    if (typeof hoTracking === 'undefined') {
+        console.error('HO Tracking: hoTracking object is not defined');
+        return;
+    }
+    
     $(document).ready(function() {
         // ========================================
         // Upload Form Handler (Original)
@@ -74,21 +80,21 @@
         // Management Page Handlers (New Feature)
         // ========================================
         if ($('#edit-record-modal').length) {
-            initManagementPage();
+            initManagementPage($);
         }
         
         // ========================================
         // Settings Page Handlers (New Feature)
         // ========================================
-        if ($('#clear-all-data').length) {
-            initSettingsPage();
+        if ($('#clear-all-data').length || $('.button-copy').length) {
+            initSettingsPage($);
         }
     });
     
     /**
      * Initialize Management Page functionality
      */
-    function initManagementPage() {
+    function initManagementPage($) {
         var modal = $('#edit-record-modal');
         var modalContent = modal.find('.modal-content');
         
@@ -131,6 +137,9 @@
                         } else {
                             showAdminMessage(response.data.message, 'error');
                         }
+                    },
+                    error: function(xhr, status, error) {
+                        showAdminMessage('An error occurred: ' + error, 'error');
                     }
                 });
             }
@@ -160,6 +169,9 @@
                     } else {
                         showAdminMessage(response.data.message, 'error');
                     }
+                },
+                error: function(xhr, status, error) {
+                    showAdminMessage('An error occurred: ' + error, 'error');
                 }
             });
         });
@@ -222,6 +234,9 @@
                         showAdminMessage(response.data.message, 'error');
                     }
                 },
+                error: function(xhr, status, error) {
+                    showAdminMessage('An error occurred: ' + error, 'error');
+                },
                 complete: function() {
                     submitButton.prop('disabled', false);
                     formSpinner.removeClass('is-active');
@@ -233,7 +248,7 @@
     /**
      * Initialize Settings Page functionality
      */
-    function initSettingsPage() {
+    function initSettingsPage($) {
         // Clear all data button
         $('#clear-all-data').on('click', function() {
             var confirmMsg1 = hoTracking.confirm_clear_all || 'Are you sure you want to delete ALL tracking records? This action cannot be undone!';
@@ -314,8 +329,14 @@
     
     /**
      * Helper function to show admin toast messages
+     * Accessible from anywhere in the IIFE
      */
     function showAdminMessage(message, type) {
+        if (typeof $ === 'undefined') {
+            console.error('jQuery is not defined');
+            return;
+        }
+        
         var messageContainer = $('#message-container');
         if (!messageContainer.length) {
             messageContainer = $('<div id="message-container"></div>').appendTo('body');
