@@ -41,6 +41,10 @@ class HO_Tracking {
             add_action('admin_menu', array($this, 'add_admin_menu'));
             add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
             add_action('wp_ajax_ho_tracking_upload', array($this, 'handle_upload'));
+            add_action('wp_ajax_ho_tracking_delete_record', array($this, 'ajax_delete_record'));
+            add_action('wp_ajax_ho_tracking_bulk_delete', array($this, 'ajax_bulk_delete'));
+            add_action('wp_ajax_ho_tracking_update_record', array($this, 'ajax_update_record'));
+            add_action('admin_init', array($this, 'register_settings'));
         }
         
         // Frontend hooks
@@ -102,29 +106,75 @@ class HO_Tracking {
      * Add admin menu
      */
     public function add_admin_menu() {
+        // Main menu
         add_menu_page(
             __('HO Tracking', 'ho-tracking'),
             __('HO Tracking', 'ho-tracking'),
             'manage_options',
             'ho-tracking',
             array($this, 'admin_page'),
-            'dashicons-upload',
+            'dashicons-location',
             30
+        );
+        
+        // Submenu - Upload
+        add_submenu_page(
+            'ho-tracking',
+            __('Upload Data', 'ho-tracking'),
+            __('Upload Data', 'ho-tracking'),
+            'manage_options',
+            'ho-tracking',
+            array($this, 'admin_page')
+        );
+        
+        // Submenu - Manage Records
+        add_submenu_page(
+            'ho-tracking',
+            __('Manage Records', 'ho-tracking'),
+            __('Manage Records', 'ho-tracking'),
+            'manage_options',
+            'ho-tracking-manage',
+            array($this, 'manage_page')
+        );
+        
+        // Submenu - Settings
+        add_submenu_page(
+            'ho-tracking',
+            __('Settings', 'ho-tracking'),
+            __('Settings', 'ho-tracking'),
+            'manage_options',
+            'ho-tracking-settings',
+            array($this, 'settings_page')
         );
     }
     
     /**
-     * Admin page content
+     * Admin page content (Upload)
      */
     public function admin_page() {
         include HO_TRACKING_PLUGIN_DIR . 'admin/admin-page.php';
     }
     
     /**
+     * Manage records page
+     */
+    public function manage_page() {
+        include HO_TRACKING_PLUGIN_DIR . 'admin/manage-page.php';
+    }
+    
+    /**
+     * Settings page
+     */
+    public function settings_page() {
+        include HO_TRACKING_PLUGIN_DIR . 'admin/settings-page.php';
+    }
+    
+    /**
      * Enqueue admin scripts and styles
      */
     public function admin_enqueue_scripts($hook) {
-        if ($hook !== 'toplevel_page_ho-tracking') {
+        // Only load on our plugin pages
+        if (!in_array($hook, array('toplevel_page_ho-tracking', 'ho-tracking_page_ho-tracking-manage', 'ho-tracking_page_ho-tracking-settings'))) {
             return;
         }
         
@@ -133,7 +183,9 @@ class HO_Tracking {
         
         wp_localize_script('ho-tracking-admin', 'hoTracking', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('ho_tracking_nonce')
+            'nonce' => wp_create_nonce('ho_tracking_nonce'),
+            'confirm_delete' => __('Are you sure you want to delete this record?', 'ho-tracking'),
+            'confirm_bulk_delete' => __('Are you sure you want to delete the selected records?', 'ho-tracking')
         ));
     }
     
@@ -431,6 +483,114 @@ class HO_Tracking {
         ob_start();
         include HO_TRACKING_PLUGIN_DIR . 'templates/tracking-table.php';
         return ob_get_clean();
+    }
+    
+    /**
+     * Register plugin settings
+     */
+    public function register_settings() {
+        register_setting('ho_tracking_settings', 'ho_tracking_records_per_page');
+        register_setting('ho_tracking_settings', 'ho_tracking_date_format');
+        register_setting('ho_tracking_settings', 'ho_tracking_enable_export');
+    }
+    
+    /**
+     * AJAX handler for deleting a record
+     */
+    public function ajax_delete_record() {
+        check_ajax_referer('ho_tracking_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));
+        }
+        
+        $record_id = isset($_POST['record_id']) ? intval($_POST['record_id']) : 0;
+        
+        if (!$record_id) {
+            wp_send_json_error(array('message' => __('Invalid record ID', 'ho-tracking')));
+        }
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'ho_tracking';
+        
+        $deleted = $wpdb->delete($table_name, array('id' => $record_id), array('%d'));
+        
+        if ($deleted) {
+            wp_send_json_success(array('message' => __('Record deleted successfully', 'ho-tracking')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to delete record', 'ho-tracking')));
+        }
+    }
+    
+    /**
+     * AJAX handler for bulk delete
+     */
+    public function ajax_bulk_delete() {
+        check_ajax_referer('ho_tracking_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));
+        }
+        
+        $record_ids = isset($_POST['record_ids']) ? array_map('intval', $_POST['record_ids']) : array();
+        
+        if (empty($record_ids)) {
+            wp_send_json_error(array('message' => __('No records selected', 'ho-tracking')));
+        }
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'ho_tracking';
+        
+        $placeholders = implode(',', array_fill(0, count($record_ids), '%d'));
+        $query = $wpdb->prepare("DELETE FROM $table_name WHERE id IN ($placeholders)", $record_ids);
+        $deleted = $wpdb->query($query);
+        
+        if ($deleted) {
+            wp_send_json_success(array('message' => sprintf(__('%d records deleted successfully', 'ho-tracking'), $deleted)));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to delete records', 'ho-tracking')));
+        }
+    }
+    
+    /**
+     * AJAX handler for updating a record
+     */
+    public function ajax_update_record() {
+        check_ajax_referer('ho_tracking_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));
+        }
+        
+        $record_id = isset($_POST['record_id']) ? intval($_POST['record_id']) : 0;
+        
+        if (!$record_id) {
+            wp_send_json_error(array('message' => __('Invalid record ID', 'ho-tracking')));
+        }
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'ho_tracking';
+        
+        $updated = $wpdb->update(
+            $table_name,
+            array(
+                'tracking_code' => sanitize_text_field($_POST['tracking_code']),
+                'recipient_name' => sanitize_text_field($_POST['recipient_name']),
+                'status' => sanitize_text_field($_POST['status']),
+                'date_sent' => sanitize_text_field($_POST['date_sent']),
+                'date_delivered' => sanitize_text_field($_POST['date_delivered']),
+                'notes' => sanitize_textarea_field($_POST['notes'])
+            ),
+            array('id' => $record_id),
+            array('%s', '%s', '%s', '%s', '%s', '%s'),
+            array('%d')
+        );
+        
+        if ($updated !== false) {
+            wp_send_json_success(array('message' => __('Record updated successfully', 'ho-tracking')));
+        } else {
+            wp_send_json_error(array('message' => __('Failed to update record', 'ho-tracking')));
+        }
     }
 }
 
