@@ -43,6 +43,12 @@
     color: #721c24;
 }
 
+#upload-message.info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
 .ho-tracking-admin code {
     background: #f5f5f5;
     padding: 4px 8px;
