@@ -41,6 +41,7 @@ class HO_Tracking {
             add_action('admin_menu', array($this, 'add_admin_menu'));
             add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
             add_action('wp_ajax_ho_tracking_upload', array($this, 'handle_upload'));
+            add_action('wp_ajax_ho_tracking_save_settings', array($this, 'save_settings'));
         }
         
         // Frontend hooks
@@ -111,6 +112,16 @@ class HO_Tracking {
             'dashicons-upload',
             30
         );
+        
+        // Add settings submenu
+        add_submenu_page(
+            'ho-tracking',
+            __('Display Settings', 'ho-tracking'),
+            __('Display Settings', 'ho-tracking'),
+            'manage_options',
+            'ho-tracking-settings',
+            array($this, 'settings_page')
+        );
     }
     
     /**
@@ -121,10 +132,17 @@ class HO_Tracking {
     }
     
     /**
+     * Settings page content
+     */
+    public function settings_page() {
+        include HO_TRACKING_PLUGIN_DIR . 'admin/settings-page.php';
+    }
+    
+    /**
      * Enqueue admin scripts and styles
      */
     public function admin_enqueue_scripts($hook) {
-        if ($hook !== 'toplevel_page_ho-tracking') {
+        if ($hook !== 'toplevel_page_ho-tracking' && $hook !== 'ho-tracking_page_ho-tracking-settings') {
             return;
         }
         
@@ -146,7 +164,8 @@ class HO_Tracking {
         
         wp_localize_script('ho-tracking-frontend', 'hoTracking', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('ho_tracking_search_nonce')
+            'nonce' => wp_create_nonce('ho_tracking_search_nonce'),
+            'visibleColumns' => $this->get_visible_columns()
         ));
     }
     
@@ -431,6 +450,43 @@ class HO_Tracking {
         ob_start();
         include HO_TRACKING_PLUGIN_DIR . 'templates/tracking-table.php';
         return ob_get_clean();
+    }
+    
+    /**
+     * Save settings via AJAX
+     */
+    public function save_settings() {
+        check_ajax_referer('ho_tracking_nonce', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));
+        }
+        
+        $visible_columns = isset($_POST['visible_columns']) ? $_POST['visible_columns'] : array();
+        
+        // Sanitize the columns array
+        $allowed_columns = array('tracking_code', 'recipient_name', 'status', 'date_sent', 'date_delivered', 'notes');
+        $visible_columns = array_intersect($visible_columns, $allowed_columns);
+        
+        // Save to options
+        update_option('ho_tracking_visible_columns', $visible_columns);
+        
+        wp_send_json_success(array('message' => __('Settings saved successfully', 'ho-tracking')));
+    }
+    
+    /**
+     * Get visible columns
+     */
+    public function get_visible_columns() {
+        $default_columns = array('tracking_code', 'recipient_name', 'status', 'date_sent', 'date_delivered', 'notes');
+        $visible_columns = get_option('ho_tracking_visible_columns', $default_columns);
+        
+        // Ensure it's an array
+        if (!is_array($visible_columns) || empty($visible_columns)) {
+            $visible_columns = $default_columns;
+        }
+        
+        return $visible_columns;
     }
 }
 

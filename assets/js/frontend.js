@@ -64,27 +64,66 @@
         }
         
         function displayResults(data) {
+            var visibleColumns = hoTracking.visibleColumns || ['tracking_code', 'recipient_name', 'status', 'date_sent', 'date_delivered', 'notes'];
+            
+            // Define column labels in both English and Persian
+            var columnLabels = {
+                'tracking_code': 'Tracking Code / کد رهگیری',
+                'recipient_name': 'Recipient Name / نام گیرنده',
+                'status': 'Status / وضعیت',
+                'date_sent': 'Date Sent / تاریخ ارسال',
+                'date_delivered': 'Date Delivered / تاریخ تحویل',
+                'notes': 'Notes / توضیحات'
+            };
+            
             var html = '<table class="tracking-table">';
             html += '<thead>';
             html += '<tr>';
-            html += '<th>Tracking Code</th>';
-            html += '<th>Recipient Name</th>';
-            html += '<th>Status</th>';
-            html += '<th>Date Sent</th>';
-            html += '<th>Date Delivered</th>';
-            html += '<th>Notes</th>';
+            
+            // Add headers for visible columns
+            $.each(visibleColumns, function(index, column) {
+                if (columnLabels[column]) {
+                    html += '<th>' + columnLabels[column] + '</th>';
+                }
+            });
+            
             html += '</tr>';
             html += '</thead>';
             html += '<tbody>';
             
             $.each(data, function(index, row) {
                 html += '<tr>';
-                html += '<td data-label="Tracking Code"><strong>' + escapeHtml(row.tracking_code || '-') + '</strong></td>';
-                html += '<td data-label="Recipient Name">' + escapeHtml(row.recipient_name || '-') + '</td>';
-                html += '<td data-label="Status">' + formatStatus(row.status) + '</td>';
-                html += '<td data-label="Date Sent">' + escapeHtml(row.date_sent || '-') + '</td>';
-                html += '<td data-label="Date Delivered">' + escapeHtml(row.date_delivered || '-') + '</td>';
-                html += '<td data-label="Notes">' + escapeHtml(row.notes || '-') + '</td>';
+                
+                $.each(visibleColumns, function(colIndex, column) {
+                    if (columnLabels[column]) {
+                        var label = columnLabels[column].split(' / ')[0]; // Use English label for data-label
+                        var value = '';
+                        
+                        switch(column) {
+                            case 'tracking_code':
+                                value = '<strong>' + escapeHtml(row.tracking_code || '-') + '</strong>';
+                                break;
+                            case 'recipient_name':
+                                value = escapeHtml(row.recipient_name || '-');
+                                break;
+                            case 'status':
+                                value = formatStatus(row.status);
+                                break;
+                            case 'date_sent':
+                                value = escapeHtml(row.date_sent || '-');
+                                break;
+                            case 'date_delivered':
+                                value = escapeHtml(row.date_delivered || '-');
+                                break;
+                            case 'notes':
+                                value = escapeHtml(row.notes || '-');
+                                break;
+                        }
+                        
+                        html += '<td data-label="' + label + '">' + value + '</td>';
+                    }
+                });
+                
                 html += '</tr>';
             });
             

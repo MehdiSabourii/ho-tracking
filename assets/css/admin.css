@@ -2,59 +2,79 @@
  * Admin styles for HO Tracking
  */
 
-.ho-tracking-admin .card {
+.ho-tracking-admin .card,
+.ho-tracking-settings .card {
     max-width: 800px;
     margin-bottom: 20px;
 }
 
-.ho-tracking-admin .card h2 {
+.ho-tracking-admin .card h2,
+.ho-tracking-settings .card h2 {
     margin-top: 0;
 }
 
-.ho-tracking-upload-section {
+.ho-tracking-upload-section,
+.ho-tracking-settings-section {
     margin-top: 20px;
 }
 
-#ho-tracking-upload-form .spinner {
+#ho-tracking-upload-form .spinner,
+#ho-tracking-settings-form .spinner {
     float: none;
     margin-left: 10px;
     visibility: hidden;
 }
 
-#ho-tracking-upload-form .spinner.is-active {
+#ho-tracking-upload-form .spinner.is-active,
+#ho-tracking-settings-form .spinner.is-active {
     visibility: visible;
 }
 
-#upload-message {
+#upload-message,
+#settings-message {
     margin-top: 20px;
     padding: 10px 15px;
     border-radius: 4px;
 }
 
-#upload-message.success {
+#upload-message.success,
+#settings-message.success {
     background-color: #d4edda;
     border: 1px solid #c3e6cb;
     color: #155724;
 }
 
-#upload-message.error {
+#upload-message.error,
+#settings-message.error {
     background-color: #f8d7da;
     border: 1px solid #f5c6cb;
     color: #721c24;
 }
 
-.ho-tracking-admin code {
+.ho-tracking-admin code,
+.ho-tracking-settings code {
     background: #f5f5f5;
     padding: 4px 8px;
     border-radius: 3px;
     font-size: 14px;
 }
 
-.ho-tracking-admin ul {
+.ho-tracking-admin ul,
+.ho-tracking-settings ul {
     list-style: disc;
     margin-left: 20px;
 }
 
-.ho-tracking-admin ul li {
+.ho-tracking-admin ul li,
+.ho-tracking-settings ul li {
     margin-bottom: 8px;
+}
+
+/* Settings page specific styles */
+.ho-tracking-settings .form-table th {
+    width: 300px;
+}
+
+.ho-tracking-settings .form-table label {
+    font-weight: normal;
 }
