@@ -129,26 +129,11 @@ class HO_Tracking_Elementor_Widget extends \Elementor\Widget_Base {
     }
     
     /**
-     * Render widget output in the editor (optional)
+     * Render widget output in the editor
+     * This method is not required for this widget as we want to show the live preview
+     * Elementor will automatically use the render() method for the editor preview
      */
     protected function content_template() {
-        ?>
-        <div class="ho-tracking-wrapper">
-            <div class="ho-tracking-search">
-                <h3><?php _e('Track Your Package', 'ho-tracking'); ?></h3>
-                <div class="search-box">
-                    <input type="text" placeholder="<?php _e('Enter tracking code or recipient name...', 'ho-tracking'); ?>" disabled>
-                    <button type="button" class="search-button" disabled>
-                        <?php _e('Search', 'ho-tracking'); ?>
-                    </button>
-                </div>
-            </div>
-            <div class="ho-tracking-results">
-                <p style="text-align: center; padding: 20px; color: #999;">
-                    <?php _e('Preview: The tracking table will be displayed here on the frontend.', 'ho-tracking'); ?>
-                </p>
-            </div>
-        </div>
-        <?php
+        // Leave empty to use render() method for live preview in editor
     }
 }
