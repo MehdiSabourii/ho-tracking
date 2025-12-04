@@ -125,12 +125,7 @@ class HO_Tracking_Elementor_Widget extends \Elementor\Widget_Base {
      */
     protected function render() {
         // Use the existing shortcode functionality
-        if (class_exists('HO_Tracking')) {
-            $plugin = new HO_Tracking();
-            echo $plugin->tracking_table_shortcode(array());
-        } else {
-            echo '<p>' . __('HO Tracking plugin is not active.', 'ho-tracking') . '</p>';
-        }
+        echo do_shortcode('[ho_tracking_table]');
     }
     
     /**

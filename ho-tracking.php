@@ -442,8 +442,8 @@ class HO_Tracking {
      * Register Elementor widgets
      */
     public function register_elementor_widgets($widgets_manager) {
-        // Check if Elementor is active
-        if (!did_action('elementor/loaded')) {
+        // Check if Elementor widget base class is available
+        if (!class_exists('\Elementor\Widget_Base')) {
             return;
         }
         
@@ -458,19 +458,25 @@ class HO_Tracking {
      * Enqueue styles for Elementor frontend
      */
     public function elementor_enqueue_styles() {
-        wp_enqueue_style('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/css/frontend.css', array(), HO_TRACKING_VERSION);
+        // Only enqueue if not already enqueued
+        if (!wp_style_is('ho-tracking-frontend', 'enqueued')) {
+            wp_enqueue_style('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/css/frontend.css', array(), HO_TRACKING_VERSION);
+        }
     }
     
     /**
      * Enqueue scripts for Elementor frontend
      */
     public function elementor_enqueue_scripts() {
-        wp_enqueue_script('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), HO_TRACKING_VERSION, true);
-        
-        wp_localize_script('ho-tracking-frontend', 'hoTracking', array(
-            'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('ho_tracking_search_nonce')
-        ));
+        // Only enqueue if not already enqueued
+        if (!wp_script_is('ho-tracking-frontend', 'enqueued')) {
+            wp_enqueue_script('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), HO_TRACKING_VERSION, true);
+            
+            wp_localize_script('ho-tracking-frontend', 'hoTracking', array(
+                'ajaxurl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('ho_tracking_search_nonce')
+            ));
+        }
     }
 }
 
