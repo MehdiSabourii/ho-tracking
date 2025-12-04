@@ -49,7 +49,7 @@ class HO_Tracking {
         add_action('wp_ajax_ho_tracking_search', array($this, 'ajax_search'));
         add_action('wp_ajax_nopriv_ho_tracking_search', array($this, 'ajax_search'));
         
-        // Elementor widget hooks
+        // Elementor widget hooks (only register if Elementor is likely to be active)
         add_action('elementor/widgets/register', array($this, 'register_elementor_widgets'));
         add_action('elementor/frontend/after_enqueue_styles', array($this, 'elementor_enqueue_styles'));
         add_action('elementor/frontend/after_enqueue_scripts', array($this, 'elementor_enqueue_scripts'));
@@ -454,7 +454,7 @@ class HO_Tracking {
             return;
         }
         
-        // Include widget file
+        // Include widget file only if Elementor is available
         require_once HO_TRACKING_PLUGIN_DIR . 'includes/elementor-widget.php';
         
         // Register widget
