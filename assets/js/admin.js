@@ -6,13 +6,16 @@
     'use strict';
     
     $(document).ready(function() {
-        // Upload form handler
+        // ========================================
+        // Upload Form Handler (Original)
+        // ========================================
         var uploadForm = $('#ho-tracking-upload-form');
-        var uploadButton = $('#upload-button');
-        var spinner = uploadForm.find('.spinner');
-        var messageDiv = $('#upload-message');
         
         if (uploadForm.length) {
+            var uploadButton = $('#upload-button');
+            var spinner = uploadForm.find('.spinner');
+            var messageDiv = $('#upload-message');
+            
             uploadForm.on('submit', function(e) {
                 e.preventDefault();
                 
@@ -56,9 +59,36 @@
                     }
                 });
             });
+            
+            function showMessage(message, type) {
+                messageDiv
+                    .removeClass('success error')
+                    .addClass(type)
+                    .html('<p>' + message + '</p>')
+                    .show();
+            }
+        }
+
+        
+        // ========================================
+        // Management Page Handlers (New Feature)
+        // ========================================
+        if ($('#edit-record-modal').length) {
+            initManagementPage();
         }
         
-        // Management page handlers
+        // ========================================
+        // Settings Page Handlers (New Feature)
+        // ========================================
+        if ($('#clear-all-data').length) {
+            initSettingsPage();
+        }
+    });
+    
+    /**
+     * Initialize Management Page functionality
+     */
+    function initManagementPage() {
         var modal = $('#edit-record-modal');
         var modalContent = modal.find('.modal-content');
         
@@ -198,7 +228,12 @@
                 }
             });
         });
-        
+    }
+    
+    /**
+     * Initialize Settings Page functionality
+     */
+    function initSettingsPage() {
         // Clear all data button
         $('#clear-all-data').on('click', function() {
             var confirmMsg1 = hoTracking.confirm_clear_all || 'Are you sure you want to delete ALL tracking records? This action cannot be undone!';
@@ -275,31 +310,25 @@
             }
             tempInput.remove();
         }
-        
-        // Helper functions
-        function showMessage(message, type) {
-            messageDiv
-                .removeClass('success error')
-                .addClass(type)
-                .html('<p>' + message + '</p>')
-                .show();
+    }
+    
+    /**
+     * Helper function to show admin toast messages
+     */
+    function showAdminMessage(message, type) {
+        var messageContainer = $('#message-container');
+        if (!messageContainer.length) {
+            messageContainer = $('<div id="message-container"></div>').appendTo('body');
         }
         
-        function showAdminMessage(message, type) {
-            var messageContainer = $('#message-container');
-            if (!messageContainer.length) {
-                messageContainer = $('<div id="message-container"></div>').appendTo('body');
-            }
-            
-            var messageEl = $('<div class="admin-message ' + type + '">' + message + '</div>');
-            messageContainer.append(messageEl);
-            
-            setTimeout(function() {
-                messageEl.fadeOut(300, function() {
-                    $(this).remove();
-                });
-            }, 4000);
-        }
-    });
+        var messageEl = $('<div class="admin-message ' + type + '">' + message + '</div>');
+        messageContainer.append(messageEl);
+        
+        setTimeout(function() {
+            messageEl.fadeOut(300, function() {
+                $(this).remove();
+            });
+        }, 4000);
+    }
     
 })(jQuery);
