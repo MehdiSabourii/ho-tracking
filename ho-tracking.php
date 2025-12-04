@@ -73,8 +73,8 @@ class HO_Tracking {
         $table_name = $wpdb->prefix . 'ho_tracking';
         $charset_collate = $wpdb->get_charset_collate();
         
-        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
+        $sql = "CREATE TABLE $table_name (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             tracking_code varchar(255) NOT NULL,
             recipient_name varchar(255) DEFAULT NULL,
             status varchar(100) DEFAULT NULL,
@@ -82,12 +82,22 @@ class HO_Tracking {
             date_delivered datetime DEFAULT NULL,
             notes text DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            KEY tracking_code (tracking_code)
+            PRIMARY KEY  (id),
+            KEY tracking_code (tracking_code),
+            KEY created_at (created_at)
         ) $charset_collate;";
         
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql);
+        
+        // Verify table was created
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        
+        if ($table_exists) {
+            error_log('HO Tracking: Database table created/updated successfully');
+        } else {
+            error_log('HO Tracking: Failed to create database table');
+        }
     }
     
     /**
@@ -96,6 +106,23 @@ class HO_Tracking {
     public function init() {
         // Load plugin text domain
         load_plugin_textdomain('ho-tracking', false, dirname(plugin_basename(__FILE__)) . '/languages');
+        
+        // Verify database table exists, create if missing
+        $this->verify_database();
+    }
+    
+    /**
+     * Verify database table exists
+     */
+    private function verify_database() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'ho_tracking';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        
+        if (!$table_exists) {
+            error_log('HO Tracking: Table not found, creating...');
+            $this->create_table();
+        }
     }
     
     /**
@@ -507,9 +534,16 @@ class HO_Tracking {
     private function clear_tracking_data() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
-        // Sanitize table name and use DELETE for safety
-        $table_name = esc_sql($table_name);
-        $wpdb->query("DELETE FROM `$table_name`");
+        
+        // Use wpdb methods for safe deletion
+        $result = $wpdb->query("TRUNCATE TABLE `{$table_name}`");
+        
+        if ($result === false) {
+            // If TRUNCATE fails, try DELETE
+            $wpdb->query("DELETE FROM `{$table_name}`");
+        }
+        
+        error_log('HO Tracking: Cleared all tracking data');
     }
     
     /**
@@ -618,19 +652,38 @@ class HO_Tracking {
     public function ajax_search() {
         check_ajax_referer('ho_tracking_search_nonce', 'nonce');
         
-        $search = isset($_POST['search']) ? sanitize_text_field($_POST['search']) : '';
+        $search = isset($_POST['search']) ? sanitize_text_field(trim($_POST['search'])) : '';
         
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
         
+        // Check if table exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        
+        if (!$table_exists) {
+            wp_send_json_error(array('message' => __('Database table not found. Please reactivate the plugin.', 'ho-tracking')));
+            return;
+        }
+        
         if (!empty($search)) {
             $results = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $table_name WHERE tracking_code LIKE %s OR recipient_name LIKE %s ORDER BY created_at DESC",
+                "SELECT * FROM `{$table_name}` WHERE tracking_code LIKE %s OR recipient_name LIKE %s ORDER BY created_at DESC LIMIT 200",
                 '%' . $wpdb->esc_like($search) . '%',
                 '%' . $wpdb->esc_like($search) . '%'
             ));
         } else {
-            $results = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC LIMIT 100");
+            $results = $wpdb->get_results("SELECT * FROM `{$table_name}` ORDER BY created_at DESC LIMIT 100");
+        }
+        
+        if ($wpdb->last_error) {
+            error_log('HO Tracking search error: ' . $wpdb->last_error);
+            wp_send_json_error(array('message' => __('Database error occurred. Please try again.', 'ho-tracking')));
+            return;
+        }
+        
+        // Ensure results is an array
+        if (!is_array($results)) {
+            $results = array();
         }
         
         wp_send_json_success(array('data' => $results));
