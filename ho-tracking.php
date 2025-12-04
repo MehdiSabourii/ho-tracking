@@ -102,6 +102,14 @@ class HO_Tracking {
         $table_name = $wpdb->prefix . 'ho_tracking';
         $charset_collate = $wpdb->get_charset_collate();
         
+        // Check if table already exists
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name;
+        
+        if ($table_exists) {
+            error_log('HO Tracking: Database table already exists');
+            return;
+        }
+        
         $sql = "CREATE TABLE $table_name (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             tracking_code varchar(255) NOT NULL,
@@ -120,10 +128,10 @@ class HO_Tracking {
         dbDelta($sql);
         
         // Verify table was created
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name;
         
         if ($table_exists) {
-            error_log('HO Tracking: Database table created/updated successfully');
+            error_log('HO Tracking: Database table created successfully');
         } else {
             error_log('HO Tracking: Failed to create database table');
         }
@@ -146,7 +154,7 @@ class HO_Tracking {
     private function verify_database() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name;
         
         if (!$table_exists) {
             error_log('HO Tracking: Table not found, creating...');
@@ -261,12 +269,17 @@ class HO_Tracking {
         );
         
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime_type = finfo_file($finfo, $file['tmp_name']);
-        finfo_close($finfo);
-        
-        if (!in_array($mime_type, $allowed_mime_types) && !in_array($file_ext, array('csv', 'xls', 'xlsx'))) {
-            wp_send_json_error(array('message' => __('Invalid file type detected. Please upload a valid CSV or Excel file.', 'ho-tracking')));
-            return;
+        if ($finfo === false) {
+            error_log('HO Tracking: Failed to initialize finfo');
+            // Continue without MIME type validation if finfo fails
+        } else {
+            $mime_type = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+            
+            if ($mime_type && !in_array($mime_type, $allowed_mime_types) && !in_array($file_ext, array('csv', 'xls', 'xlsx'))) {
+                wp_send_json_error(array('message' => __('Invalid file type detected. Please upload a valid CSV or Excel file.', 'ho-tracking')));
+                return;
+            }
         }
         
         // Check if Excel support is available for xls/xlsx files
@@ -413,6 +426,7 @@ class HO_Tracking {
         }
         
         $headers = fgetcsv($handle, 0, ',');
+        $delimiter = ',';
         
         // Try semicolon delimiter if comma fails
         if ($headers === false || count($headers) <= 1) {
@@ -422,6 +436,7 @@ class HO_Tracking {
                 fread($handle, 3);
             }
             $headers = fgetcsv($handle, 0, ';');
+            $delimiter = ';';
         }
         
         if (!$headers || count($headers) === 0) {
@@ -445,7 +460,7 @@ class HO_Tracking {
         $headers = array_values($headers);
         
         $row_number = 1; // Start from 1 after header
-        while (($row = fgetcsv($handle, 0, ',')) !== false || ($row = fgetcsv($handle, 0, ';')) !== false) {
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
             $row_number++;
             
             // Skip empty rows
@@ -564,13 +579,8 @@ class HO_Tracking {
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
         
-        // Use wpdb methods for safe deletion
-        $result = $wpdb->query("TRUNCATE TABLE `{$table_name}`");
-        
-        if ($result === false) {
-            // If TRUNCATE fails, try DELETE
-            $wpdb->query("DELETE FROM `{$table_name}`");
-        }
+        // Use DELETE for better compatibility
+        $wpdb->query("DELETE FROM `{$table_name}`");
         
         error_log('HO Tracking: Cleared all tracking data');
     }
@@ -687,7 +697,7 @@ class HO_Tracking {
         $table_name = $wpdb->prefix . 'ho_tracking';
         
         // Check if table exists
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name;
         
         if (!$table_exists) {
             wp_send_json_error(array('message' => __('Database table not found. Please reactivate the plugin.', 'ho-tracking')));
@@ -701,7 +711,10 @@ class HO_Tracking {
                 '%' . $wpdb->esc_like($search) . '%'
             ));
         } else {
-            $results = $wpdb->get_results("SELECT * FROM `{$table_name}` ORDER BY created_at DESC LIMIT 100");
+            $results = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM `{$table_name}` ORDER BY created_at DESC LIMIT %d",
+                100
+            ));
         }
         
         if ($wpdb->last_error) {
