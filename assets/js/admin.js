@@ -201,11 +201,14 @@
         
         // Clear all data button
         $('#clear-all-data').on('click', function() {
-            if (!confirm('Are you sure you want to delete ALL tracking records? This action cannot be undone!')) {
+            var confirmMsg1 = hoTracking.confirm_clear_all || 'Are you sure you want to delete ALL tracking records? This action cannot be undone!';
+            var confirmMsg2 = hoTracking.confirm_clear_final || 'This is your final warning. All data will be permanently deleted. Continue?';
+            
+            if (!confirm(confirmMsg1)) {
                 return;
             }
             
-            if (!confirm('This is your final warning. All data will be permanently deleted. Continue?')) {
+            if (!confirm(confirmMsg2)) {
                 return;
             }
             
@@ -236,19 +239,42 @@
         // Copy shortcode button
         $('.button-copy').on('click', function() {
             var text = $(this).data('clipboard-text');
+            var button = $(this);
+            var originalText = button.text();
+            var copiedText = hoTracking.copied_text || 'Copied!';
+            
+            // Try modern Clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    button.text(copiedText);
+                    setTimeout(function() {
+                        button.text(originalText);
+                    }, 2000);
+                }).catch(function() {
+                    // Fallback to old method
+                    fallbackCopy(text, button, originalText, copiedText);
+                });
+            } else {
+                // Fallback for older browsers
+                fallbackCopy(text, button, originalText, copiedText);
+            }
+        });
+        
+        function fallbackCopy(text, button, originalText, copiedText) {
             var tempInput = $('<input>');
             $('body').append(tempInput);
             tempInput.val(text).select();
-            document.execCommand('copy');
+            try {
+                document.execCommand('copy');
+                button.text(copiedText);
+                setTimeout(function() {
+                    button.text(originalText);
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text', err);
+            }
             tempInput.remove();
-            
-            var button = $(this);
-            var originalText = button.text();
-            button.text('Copied!');
-            setTimeout(function() {
-                button.text(originalText);
-            }, 2000);
-        });
+        }
         
         // Helper functions
         function showMessage(message, type) {

@@ -185,7 +185,10 @@ class HO_Tracking {
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('ho_tracking_nonce'),
             'confirm_delete' => __('Are you sure you want to delete this record?', 'ho-tracking'),
-            'confirm_bulk_delete' => __('Are you sure you want to delete the selected records?', 'ho-tracking')
+            'confirm_bulk_delete' => __('Are you sure you want to delete the selected records?', 'ho-tracking'),
+            'confirm_clear_all' => __('Are you sure you want to delete ALL tracking records? This action cannot be undone!', 'ho-tracking'),
+            'confirm_clear_final' => __('This is your final warning. All data will be permanently deleted. Continue?', 'ho-tracking'),
+            'copied_text' => __('Copied!', 'ho-tracking')
         ));
     }
     
@@ -541,11 +544,16 @@ class HO_Tracking {
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
         
-        $placeholders = implode(',', array_fill(0, count($record_ids), '%d'));
-        $query = $wpdb->prepare("DELETE FROM $table_name WHERE id IN ($placeholders)", $record_ids);
-        $deleted = $wpdb->query($query);
+        // Delete records one by one for better security
+        $deleted = 0;
+        foreach ($record_ids as $id) {
+            $result = $wpdb->delete($table_name, array('id' => $id), array('%d'));
+            if ($result) {
+                $deleted++;
+            }
+        }
         
-        if ($deleted) {
+        if ($deleted > 0) {
             wp_send_json_success(array('message' => sprintf(__('%d records deleted successfully', 'ho-tracking'), $deleted)));
         } else {
             wp_send_json_error(array('message' => __('Failed to delete records', 'ho-tracking')));
@@ -568,6 +576,23 @@ class HO_Tracking {
             wp_send_json_error(array('message' => __('Invalid record ID', 'ho-tracking')));
         }
         
+        // Validate and sanitize date fields
+        $date_sent = isset($_POST['date_sent']) ? sanitize_text_field($_POST['date_sent']) : '';
+        $date_delivered = isset($_POST['date_delivered']) ? sanitize_text_field($_POST['date_delivered']) : '';
+        
+        // Set to null if empty or invalid date
+        if (!empty($date_sent) && strtotime($date_sent) === false) {
+            $date_sent = null;
+        } elseif (empty($date_sent)) {
+            $date_sent = null;
+        }
+        
+        if (!empty($date_delivered) && strtotime($date_delivered) === false) {
+            $date_delivered = null;
+        } elseif (empty($date_delivered)) {
+            $date_delivered = null;
+        }
+        
         global $wpdb;
         $table_name = $wpdb->prefix . 'ho_tracking';
         
@@ -577,8 +602,8 @@ class HO_Tracking {
                 'tracking_code' => sanitize_text_field($_POST['tracking_code']),
                 'recipient_name' => sanitize_text_field($_POST['recipient_name']),
                 'status' => sanitize_text_field($_POST['status']),
-                'date_sent' => sanitize_text_field($_POST['date_sent']),
-                'date_delivered' => sanitize_text_field($_POST['date_delivered']),
+                'date_sent' => $date_sent,
+                'date_delivered' => $date_delivered,
                 'notes' => sanitize_textarea_field($_POST['notes'])
             ),
             array('id' => $record_id),

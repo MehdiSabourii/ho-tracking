@@ -17,25 +17,37 @@ $per_page = get_option('ho_tracking_records_per_page', 20);
 global $wpdb;
 $table_name = $wpdb->prefix . 'ho_tracking';
 
-$where = '';
+// Build queries based on search parameter
 if (!empty($search)) {
-    $where = $wpdb->prepare(
-        "WHERE tracking_code LIKE %s OR recipient_name LIKE %s OR status LIKE %s",
-        '%' . $wpdb->esc_like($search) . '%',
-        '%' . $wpdb->esc_like($search) . '%',
-        '%' . $wpdb->esc_like($search) . '%'
-    );
+    $search_term = '%' . $wpdb->esc_like($search) . '%';
+    $total_records = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table_name WHERE tracking_code LIKE %s OR recipient_name LIKE %s OR status LIKE %s",
+        $search_term,
+        $search_term,
+        $search_term
+    ));
+    $total_pages = ceil($total_records / $per_page);
+    $offset = ($paged - 1) * $per_page;
+    
+    $records = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table_name WHERE tracking_code LIKE %s OR recipient_name LIKE %s OR status LIKE %s ORDER BY created_at DESC LIMIT %d OFFSET %d",
+        $search_term,
+        $search_term,
+        $search_term,
+        $per_page,
+        $offset
+    ));
+} else {
+    $total_records = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+    $total_pages = ceil($total_records / $per_page);
+    $offset = ($paged - 1) * $per_page;
+    
+    $records = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table_name ORDER BY created_at DESC LIMIT %d OFFSET %d",
+        $per_page,
+        $offset
+    ));
 }
-
-$total_records = $wpdb->get_var("SELECT COUNT(*) FROM $table_name $where");
-$total_pages = ceil($total_records / $per_page);
-$offset = ($paged - 1) * $per_page;
-
-$records = $wpdb->get_results($wpdb->prepare(
-    "SELECT * FROM $table_name $where ORDER BY created_at DESC LIMIT %d OFFSET %d",
-    $per_page,
-    $offset
-));
 ?>
 
 <div class="wrap ho-tracking-admin ho-tracking-manage">
