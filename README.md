@@ -11,6 +11,7 @@ A WordPress plugin that allows you to upload CSV or Excel files containing posta
 - 🎨 Mobile-friendly design
 - ⚡ Fast and efficient search
 - 🔄 Option to clear existing data before importing
+- 🧩 Elementor widget support for easy page building
 
 ## Installation
 
@@ -54,11 +55,21 @@ Without Composer, the plugin will work with CSV files only.
 
 ### 2. Display Tracking Table
 
+#### Option A: Using Shortcode
+
 Add the following shortcode to any page or post:
 
 ```
 [ho_tracking_table]
 ```
+
+#### Option B: Using Elementor Widget (if Elementor is installed)
+
+1. Edit a page with Elementor
+2. Search for "HO Tracking Table" in the widgets panel
+3. Drag and drop the widget to your desired location
+4. Customize the widget style if needed
+5. Publish the page
 
 Users can then search for their tracking code or recipient name using the search box.
 
@@ -96,11 +107,22 @@ A sample CSV file (`sample-data.csv`) is included in the plugin directory for re
 
 The plugin creates a table `wp_ho_tracking` (prefix may vary) to store tracking information. The table is automatically created upon plugin activation.
 
-## Shortcode
+## Shortcode & Widget
+
+### Shortcode
 
 **[ho_tracking_table]**
 
-Displays a search interface and tracking results table.
+Displays a search interface and tracking results table. Can be used in any post, page, or text widget.
+
+### Elementor Widget
+
+**HO Tracking Table**
+
+Available in the Elementor widgets panel under the "General" category. Provides the same functionality as the shortcode with additional styling options:
+- Search title color customization
+- Button color customization
+- Button hover color customization
 
 ## Features in Detail
 

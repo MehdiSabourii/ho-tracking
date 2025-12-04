@@ -48,6 +48,11 @@ class HO_Tracking {
         add_action('wp_enqueue_scripts', array($this, 'frontend_enqueue_scripts'));
         add_action('wp_ajax_ho_tracking_search', array($this, 'ajax_search'));
         add_action('wp_ajax_nopriv_ho_tracking_search', array($this, 'ajax_search'));
+        
+        // Elementor widget hooks
+        add_action('elementor/widgets/register', array($this, 'register_elementor_widgets'));
+        add_action('elementor/frontend/after_enqueue_styles', array($this, 'elementor_enqueue_styles'));
+        add_action('elementor/frontend/after_enqueue_scripts', array($this, 'elementor_enqueue_scripts'));
     }
     
     /**
@@ -431,6 +436,41 @@ class HO_Tracking {
         ob_start();
         include HO_TRACKING_PLUGIN_DIR . 'templates/tracking-table.php';
         return ob_get_clean();
+    }
+    
+    /**
+     * Register Elementor widgets
+     */
+    public function register_elementor_widgets($widgets_manager) {
+        // Check if Elementor is active
+        if (!did_action('elementor/loaded')) {
+            return;
+        }
+        
+        // Include widget file
+        require_once HO_TRACKING_PLUGIN_DIR . 'includes/elementor-widget.php';
+        
+        // Register widget
+        $widgets_manager->register(new \HO_Tracking_Elementor_Widget());
+    }
+    
+    /**
+     * Enqueue styles for Elementor frontend
+     */
+    public function elementor_enqueue_styles() {
+        wp_enqueue_style('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/css/frontend.css', array(), HO_TRACKING_VERSION);
+    }
+    
+    /**
+     * Enqueue scripts for Elementor frontend
+     */
+    public function elementor_enqueue_scripts() {
+        wp_enqueue_script('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), HO_TRACKING_VERSION, true);
+        
+        wp_localize_script('ho-tracking-frontend', 'hoTracking', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('ho_tracking_search_nonce')
+        ));
     }
 }
 
