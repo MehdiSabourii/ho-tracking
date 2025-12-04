@@ -46,19 +46,32 @@
                     nonce: hoTracking.nonce,
                     search: searchTerm
                 },
+                timeout: 30000, // 30 seconds timeout
                 success: function(response) {
                     loadingDiv.hide();
                     
-                    if (response.success && response.data.data.length > 0) {
+                    if (response.success && response.data && response.data.data && response.data.data.length > 0) {
                         displayResults(response.data.data);
+                    } else if (!response.success && response.data && response.data.message) {
+                        noResultsDiv.html('<p>' + escapeHtml(response.data.message) + '</p>').show();
+                        tableContainer.hide();
                     } else {
-                        noResultsDiv.show();
+                        noResultsDiv.html('<p>No tracking information found. Please check your tracking code and try again.</p>').show();
                         tableContainer.hide();
                     }
                 },
-                error: function() {
+                error: function(xhr, status, error) {
                     loadingDiv.hide();
-                    noResultsDiv.html('<p>An error occurred while searching. Please try again.</p>').show();
+                    var errorMsg = 'An error occurred while searching. Please try again.';
+                    
+                    if (status === 'timeout') {
+                        errorMsg = 'Search timeout. Please try again.';
+                    } else if (xhr.status === 0) {
+                        errorMsg = 'Network error. Please check your internet connection.';
+                    }
+                    
+                    noResultsDiv.html('<p>' + errorMsg + '</p>').show();
+                    console.error('Search error:', status, error, xhr);
                 }
             });
         }

@@ -40,6 +40,7 @@ class HO_Tracking {
         if (is_admin()) {
             add_action('admin_menu', array($this, 'add_admin_menu'));
             add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
+            add_action('admin_notices', array($this, 'admin_notices'));
             add_action('wp_ajax_ho_tracking_upload', array($this, 'handle_upload'));
         }
         
@@ -48,6 +49,34 @@ class HO_Tracking {
         add_action('wp_enqueue_scripts', array($this, 'frontend_enqueue_scripts'));
         add_action('wp_ajax_ho_tracking_search', array($this, 'ajax_search'));
         add_action('wp_ajax_nopriv_ho_tracking_search', array($this, 'ajax_search'));
+    }
+    
+    /**
+     * Display admin notices
+     */
+    public function admin_notices() {
+        // Only show on plugin page
+        $screen = get_current_screen();
+        if (!$screen || $screen->id !== 'toplevel_page_ho-tracking') {
+            return;
+        }
+        
+        // Check if Excel support is available
+        $excel_supported = class_exists('PhpOffice\PhpSpreadsheet\IOFactory') || 
+                          file_exists(HO_TRACKING_PLUGIN_DIR . 'vendor/autoload.php');
+        
+        if (!$excel_supported) {
+            ?>
+            <div class="notice notice-warning">
+                <p>
+                    <strong><?php _e('HO Tracking:', 'ho-tracking'); ?></strong>
+                    <?php _e('Excel file support is not available. To enable Excel (.xls, .xlsx) file uploads, please install Composer dependencies by running:', 'ho-tracking'); ?>
+                    <code>composer install</code>
+                    <?php _e('in the plugin directory. CSV files will work without additional dependencies.', 'ho-tracking'); ?>
+                </p>
+            </div>
+            <?php
+        }
     }
     
     /**
