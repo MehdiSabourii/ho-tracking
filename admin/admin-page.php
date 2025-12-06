@@ -10,7 +10,14 @@ if (!defined('ABSPATH')) {
 ?>
 
 <div class="wrap ho-tracking-admin">
-    <h1><?php _e('HO Tracking - Upload Tracking Data', 'ho-tracking'); ?></h1>
+    <h1 class="wp-heading-inline"><?php _e('Upload Tracking Data', 'ho-tracking'); ?></h1>
+    <a href="<?php echo admin_url('admin.php?page=ho-tracking-manage'); ?>" class="page-title-action">
+        <?php _e('Manage Records', 'ho-tracking'); ?>
+    </a>
+    <a href="<?php echo admin_url('admin.php?page=ho-tracking-settings'); ?>" class="page-title-action">
+        <?php _e('Settings', 'ho-tracking'); ?>
+    </a>
+    <hr class="wp-header-end">
     
     <div class="ho-tracking-upload-section">
         <div class="card">
