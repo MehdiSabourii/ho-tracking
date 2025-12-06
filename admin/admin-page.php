@@ -32,7 +32,10 @@ if (!defined('ABSPATH')) {
                         </th>
                         <td>
                             <input type="file" name="tracking_file" id="tracking_file" accept=".csv,.xls,.xlsx" required>
-                            <p class="description"><?php _e('Accepted formats: CSV, XLS, XLSX', 'ho-tracking'); ?></p>
+                            <p class="description">
+                                <?php _e('Accepted formats: CSV, XLS, XLSX', 'ho-tracking'); ?><br>
+                                <?php _e('Maximum file size: 10MB', 'ho-tracking'); ?>
+                            </p>
                         </td>
                     </tr>
                     <tr>

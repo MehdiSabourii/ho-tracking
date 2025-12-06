@@ -34,7 +34,8 @@
     border-bottom: 1px solid #f0f0f0;
 }
 
-.ho-tracking-upload-section {
+.ho-tracking-upload-section,
+.ho-tracking-settings-section {
     margin-top: 20px;
 }
 
@@ -45,11 +46,13 @@
     visibility: hidden;
 }
 
-#ho-tracking-upload-form .spinner.is-active {
+#ho-tracking-upload-form .spinner.is-active,
+#ho-tracking-settings-form .spinner.is-active {
     visibility: visible;
 }
 
-#upload-message {
+#upload-message,
+#settings-message {
     margin-top: 20px;
     padding: 12px 16px;
     border-radius: 4px;
@@ -76,12 +79,14 @@
     color: #c7254e;
 }
 
-.ho-tracking-admin ul {
+.ho-tracking-admin ul,
+.ho-tracking-settings ul {
     list-style: disc;
     margin-left: 20px;
 }
 
-.ho-tracking-admin ul li {
+.ho-tracking-admin ul li,
+.ho-tracking-settings ul li {
     margin-bottom: 8px;
 }
 

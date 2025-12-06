@@ -219,6 +219,9 @@
             submitButton.prop('disabled', true);
             formSpinner.addClass('is-active');
             
+            // Show progress message
+            showMessage('Uploading and processing ' + fileName + '...', 'info');
+            
             $.ajax({
                 url: hoTracking.ajaxurl,
                 type: 'POST',
