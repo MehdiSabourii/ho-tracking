@@ -6,52 +6,18 @@
     'use strict';
     
     $(document).ready(function() {
+        // Upload form handling
         var uploadForm = $('#ho-tracking-upload-form');
         var uploadButton = $('#upload-button');
-        var spinner = uploadForm.find('.spinner');
-        var messageDiv = $('#upload-message');
-        var fileInput = $('#tracking_file');
-        
-        // File input validation
-        fileInput.on('change', function() {
-            var file = this.files[0];
-            messageDiv.hide();
-            
-            if (file) {
-                // Check file size (10MB max)
-                var maxSize = 10 * 1024 * 1024; // 10MB
-                if (file.size > maxSize) {
-                    showMessage('File size exceeds maximum allowed size (10MB). Please select a smaller file.', 'error');
-                    this.value = '';
-                    return;
-                }
-                
-                // Check file extension
-                var fileName = file.name;
-                var fileExt = fileName.split('.').pop().toLowerCase();
-                var allowedExts = ['csv', 'xls', 'xlsx'];
-                
-                if (allowedExts.indexOf(fileExt) === -1) {
-                    showMessage('Invalid file format. Please upload a CSV, XLS, or XLSX file.', 'error');
-                    this.value = '';
-                    return;
-                }
-                
-                // Show file info
-                var fileSize = (file.size / 1024).toFixed(2) + ' KB';
-                if (file.size > 1024 * 1024) {
-                    fileSize = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-                }
-                console.log('Selected file: ' + fileName + ' (' + fileSize + ')');
-            }
-        });
+        var uploadSpinner = uploadForm.find('.spinner');
+        var uploadMessageDiv = $('#upload-message');
         
         uploadForm.on('submit', function(e) {
             e.preventDefault();
             
-            var fileInputElem = fileInput[0];
-            if (!fileInputElem.files.length) {
-                showMessage('Please select a file to upload.', 'error');
+            var fileInput = $('#tracking_file')[0];
+            if (!fileInput.files.length) {
+                showUploadMessage('Please select a file to upload', 'error');
                 return;
             }
             
@@ -74,6 +40,8 @@
             
             // Disable form elements
             uploadButton.prop('disabled', true);
+            uploadSpinner.addClass('is-active');
+            uploadMessageDiv.hide();
             fileInput.prop('disabled', true);
             spinner.addClass('is-active');
             messageDiv.hide();
@@ -90,42 +58,77 @@
                 timeout: 60000, // 60 seconds timeout
                 success: function(response) {
                     if (response.success) {
-                        showMessage(response.data.message, 'success');
+                        showUploadMessage(response.data.message, 'success');
                         uploadForm[0].reset();
                     } else {
-                        var errorMsg = response.data && response.data.message ? response.data.message : 'Upload failed. Please try again.';
-                        showMessage(errorMsg, 'error');
+                        showUploadMessage(response.data.message || 'Upload failed', 'error');
                     }
                 },
                 error: function(xhr, status, error) {
-                    var errorMsg = 'An error occurred while uploading the file.';
-                    
-                    if (status === 'timeout') {
-                        errorMsg = 'Upload timeout. The file may be too large or the server is busy. Please try again.';
-                    } else if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
-                        errorMsg = xhr.responseJSON.data.message;
-                    } else if (xhr.status === 0) {
-                        errorMsg = 'Network error. Please check your internet connection and try again.';
-                    } else if (xhr.status === 413) {
-                        errorMsg = 'File is too large. Please upload a smaller file.';
-                    } else if (error) {
-                        errorMsg = 'Error: ' + error;
-                    }
-                    
-                    showMessage(errorMsg, 'error');
-                    console.error('Upload error:', status, error, xhr);
+                    showUploadMessage('An error occurred: ' + error, 'error');
                 },
                 complete: function() {
                     uploadButton.prop('disabled', false);
-                    fileInput.prop('disabled', false);
-                    spinner.removeClass('is-active');
+                    uploadSpinner.removeClass('is-active');
                 }
             });
         });
         
-        function showMessage(message, type) {
-            messageDiv
-                .removeClass('success error info')
+        function showUploadMessage(message, type) {
+            uploadMessageDiv
+                .removeClass('success error')
+                .addClass(type)
+                .html('<p>' + message + '</p>')
+                .show();
+        }
+        
+        // Settings form handling
+        var settingsForm = $('#ho-tracking-settings-form');
+        var saveButton = $('#save-settings-button');
+        var settingsSpinner = settingsForm.find('.spinner');
+        var settingsMessageDiv = $('#settings-message');
+        
+        settingsForm.on('submit', function(e) {
+            e.preventDefault();
+            
+            var visibleColumns = [];
+            $('input[name="visible_columns[]"]:checked').each(function() {
+                visibleColumns.push($(this).val());
+            });
+            
+            // Disable form elements
+            saveButton.prop('disabled', true);
+            settingsSpinner.addClass('is-active');
+            settingsMessageDiv.hide();
+            
+            $.ajax({
+                url: hoTracking.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'ho_tracking_save_settings',
+                    nonce: hoTracking.settingsNonce,
+                    visible_columns: visibleColumns
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showSettingsMessage(response.data.message, 'success');
+                    } else {
+                        showSettingsMessage(response.data.message || 'Failed to save settings', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showSettingsMessage('An error occurred: ' + error, 'error');
+                },
+                complete: function() {
+                    saveButton.prop('disabled', false);
+                    settingsSpinner.removeClass('is-active');
+                }
+            });
+        });
+        
+        function showSettingsMessage(message, type) {
+            settingsMessageDiv
+                .removeClass('success error')
                 .addClass(type)
                 .html('<p>' + escapeHtml(message) + '</p>')
                 .show();
