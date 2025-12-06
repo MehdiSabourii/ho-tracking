@@ -21,16 +21,33 @@
                 return;
             }
             
+            var file = fileInputElem.files[0];
+            var fileName = file.name;
+            
+            // Confirm before clearing existing data
+            var clearExisting = $('#clear_existing').is(':checked');
+            if (clearExisting) {
+                if (!confirm('Are you sure you want to delete all existing tracking records? This action cannot be undone.')) {
+                    return;
+                }
+            }
+            
             var formData = new FormData();
             formData.append('action', 'ho_tracking_upload');
             formData.append('nonce', hoTracking.nonce);
-            formData.append('tracking_file', fileInput.files[0]);
-            formData.append('clear_existing', $('#clear_existing').is(':checked') ? 'true' : 'false');
+            formData.append('tracking_file', file);
+            formData.append('clear_existing', clearExisting ? 'true' : 'false');
             
             // Disable form elements
             uploadButton.prop('disabled', true);
             uploadSpinner.addClass('is-active');
             uploadMessageDiv.hide();
+            fileInput.prop('disabled', true);
+            spinner.addClass('is-active');
+            messageDiv.hide();
+            
+            // Show progress message
+            showMessage('Uploading and processing ' + fileName + '...', 'info');
             
             $.ajax({
                 url: hoTracking.ajaxurl,
@@ -38,6 +55,7 @@
                 data: formData,
                 processData: false,
                 contentType: false,
+                timeout: 60000, // 60 seconds timeout
                 success: function(response) {
                     if (response.success) {
                         showUploadMessage(response.data.message, 'success');
@@ -112,8 +130,24 @@
             settingsMessageDiv
                 .removeClass('success error')
                 .addClass(type)
-                .html('<p>' + message + '</p>')
+                .html('<p>' + escapeHtml(message) + '</p>')
                 .show();
+            
+            // Scroll to message
+            $('html, body').animate({
+                scrollTop: messageDiv.offset().top - 100
+            }, 300);
+        }
+        
+        function escapeHtml(text) {
+            var map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
         }
     });
     
