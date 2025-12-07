@@ -4,6 +4,7 @@ A WordPress plugin that allows you to upload CSV or Excel files containing posta
 
 ## Features
 
+### Frontend Features
 - 📁 Upload CSV, XLS, or XLSX files with tracking information
 - 🔍 Real-time AJAX search functionality
 - 📊 Beautiful, responsive tracking table
@@ -12,6 +13,19 @@ A WordPress plugin that allows you to upload CSV or Excel files containing posta
 - ⚡ Fast and efficient search
 - 🔄 Option to clear existing data before importing
 - 🧩 Elementor widget support for easy page building
+
+### Admin Dashboard Features (NEW!)
+- 🎛️ **Organized Menu Structure**: Separate pages for Upload, Manage Records, and Settings
+- 📋 **Record Management**: View, search, edit, and delete tracking records
+- 🔍 **Advanced Search**: Filter records by tracking code, recipient name, or status
+- 📄 **Pagination**: Browse through records with configurable items per page
+- ✏️ **Inline Editing**: Edit records in a beautiful modal dialog
+- 🗑️ **Bulk Actions**: Delete multiple records at once
+- 📊 **Statistics Dashboard**: Visual display of total records
+- ⚙️ **Settings Page**: Configure plugin options and preferences
+- 🎨 **Modern UI/UX**: Professional design with smooth animations
+- 🌐 **RTL Support**: Full support for Persian/Farsi right-to-left layout
+- 🔒 **Enhanced Security**: SQL injection prevention, nonce verification, and input validation
 
 ## Installation
 
@@ -48,12 +62,29 @@ Without Composer, the plugin will work with CSV files only.
 
 ### 1. Upload Tracking Data
 
-1. Go to WordPress Admin → HO Tracking
+1. Go to WordPress Admin → HO Tracking → Upload Data
 2. Click "Select File" and choose your CSV or Excel file
 3. Optionally check "Clear Existing Data" to remove old records
 4. Click "Upload and Import"
 
-### 2. Display Tracking Table
+### 2. Manage Records
+
+1. Go to WordPress Admin → HO Tracking → Manage Records
+2. Browse, search, edit, or delete existing tracking records
+3. Use the search box to find specific records
+4. Click "Edit" to modify a record in a modal dialog
+5. Use bulk actions to delete multiple records at once
+
+### 3. Configure Settings
+
+1. Go to WordPress Admin → HO Tracking → Settings
+2. Configure records per page (5-100)
+3. Choose your preferred date format
+4. Enable/disable export functionality
+5. View database statistics
+6. Access quick links to documentation
+
+### 4. Display Tracking Table
 
 #### Option A: Using Shortcode
 
