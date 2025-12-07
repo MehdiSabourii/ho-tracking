@@ -53,6 +53,11 @@ class HO_Tracking {
         add_action('wp_enqueue_scripts', array($this, 'frontend_enqueue_scripts'));
         add_action('wp_ajax_ho_tracking_search', array($this, 'ajax_search'));
         add_action('wp_ajax_nopriv_ho_tracking_search', array($this, 'ajax_search'));
+        
+        // Elementor widget hooks (only register if Elementor is likely to be active)
+        add_action('elementor/widgets/register', array($this, 'register_elementor_widgets'));
+        add_action('elementor/frontend/after_enqueue_styles', array($this, 'elementor_enqueue_styles'));
+        add_action('elementor/frontend/after_enqueue_scripts', array($this, 'elementor_enqueue_scripts'));
     }
     
     /**
@@ -263,6 +268,13 @@ class HO_Tracking {
         wp_enqueue_style('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/css/frontend.css', array(), HO_TRACKING_VERSION);
         wp_enqueue_script('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), HO_TRACKING_VERSION, true);
         
+        $this->localize_frontend_script();
+    }
+    
+    /**
+     * Localize frontend script with AJAX data
+     */
+    protected function localize_frontend_script() {
         wp_localize_script('ho-tracking-frontend', 'hoTracking', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('ho_tracking_search_nonce'),
@@ -797,132 +809,39 @@ class HO_Tracking {
     }
     
     /**
-     * Register plugin settings
+     * Register Elementor widgets
      */
-    public function register_settings() {
-        register_setting('ho_tracking_settings', 'ho_tracking_records_per_page');
-        register_setting('ho_tracking_settings', 'ho_tracking_date_format');
-        register_setting('ho_tracking_settings', 'ho_tracking_enable_export');
+    public function register_elementor_widgets($widgets_manager) {
+        // Check if Elementor widget base class is available
+        if (!class_exists('\Elementor\Widget_Base')) {
+            return;
+        }
+        
+        // Include widget file only if Elementor is available
+        require_once HO_TRACKING_PLUGIN_DIR . 'includes/elementor-widget.php';
+        
+        // Register widget
+        $widgets_manager->register(new \HO_Tracking_Elementor_Widget());
     }
     
     /**
-     * AJAX handler for deleting a record
+     * Enqueue styles for Elementor frontend
      */
-    public function ajax_delete_record() {
-        check_ajax_referer('ho_tracking_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));
-        }
-        
-        $record_id = isset($_POST['record_id']) ? intval($_POST['record_id']) : 0;
-        
-        if (!$record_id) {
-            wp_send_json_error(array('message' => __('Invalid record ID', 'ho-tracking')));
-        }
-        
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'ho_tracking';
-        
-        $deleted = $wpdb->delete($table_name, array('id' => $record_id), array('%d'));
-        
-        if ($deleted) {
-            wp_send_json_success(array('message' => __('Record deleted successfully', 'ho-tracking')));
-        } else {
-            wp_send_json_error(array('message' => __('Failed to delete record', 'ho-tracking')));
+    public function elementor_enqueue_styles() {
+        // Only enqueue if not already enqueued
+        if (!wp_style_is('ho-tracking-frontend', 'enqueued')) {
+            wp_enqueue_style('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/css/frontend.css', array(), HO_TRACKING_VERSION);
         }
     }
     
     /**
-     * AJAX handler for bulk delete
+     * Enqueue scripts for Elementor frontend
      */
-    public function ajax_bulk_delete() {
-        check_ajax_referer('ho_tracking_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));
-        }
-        
-        $record_ids = isset($_POST['record_ids']) ? array_map('intval', $_POST['record_ids']) : array();
-        // Filter out any zero or invalid values
-        $record_ids = array_filter($record_ids, function($id) {
-            return $id > 0;
-        });
-        
-        if (empty($record_ids)) {
-            wp_send_json_error(array('message' => __('No records selected', 'ho-tracking')));
-        }
-        
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'ho_tracking';
-        
-        // Use optimized single query with proper placeholders
-        $placeholders = implode(',', array_fill(0, count($record_ids), '%d'));
-        $query = "DELETE FROM $table_name WHERE id IN ($placeholders)";
-        $deleted = $wpdb->query($wpdb->prepare($query, $record_ids));
-        
-        if ($deleted) {
-            wp_send_json_success(array('message' => sprintf(__('%d records deleted successfully', 'ho-tracking'), $deleted)));
-        } else {
-            wp_send_json_error(array('message' => __('Failed to delete records', 'ho-tracking')));
-        }
-    }
-    
-    /**
-     * AJAX handler for updating a record
-     */
-    public function ajax_update_record() {
-        check_ajax_referer('ho_tracking_nonce', 'nonce');
-        
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(array('message' => __('Permission denied', 'ho-tracking')));
-        }
-        
-        $record_id = isset($_POST['record_id']) ? intval($_POST['record_id']) : 0;
-        
-        if (!$record_id) {
-            wp_send_json_error(array('message' => __('Invalid record ID', 'ho-tracking')));
-        }
-        
-        // Validate and sanitize date fields
-        $date_sent = isset($_POST['date_sent']) ? sanitize_text_field($_POST['date_sent']) : '';
-        $date_delivered = isset($_POST['date_delivered']) ? sanitize_text_field($_POST['date_delivered']) : '';
-        
-        // Set to null if empty or invalid date
-        if (!empty($date_sent) && strtotime($date_sent) === false) {
-            $date_sent = null;
-        } elseif (empty($date_sent)) {
-            $date_sent = null;
-        }
-        
-        if (!empty($date_delivered) && strtotime($date_delivered) === false) {
-            $date_delivered = null;
-        } elseif (empty($date_delivered)) {
-            $date_delivered = null;
-        }
-        
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'ho_tracking';
-        
-        $updated = $wpdb->update(
-            $table_name,
-            array(
-                'tracking_code' => sanitize_text_field($_POST['tracking_code']),
-                'recipient_name' => sanitize_text_field($_POST['recipient_name']),
-                'status' => sanitize_text_field($_POST['status']),
-                'date_sent' => $date_sent,
-                'date_delivered' => $date_delivered,
-                'notes' => sanitize_textarea_field($_POST['notes'])
-            ),
-            array('id' => $record_id),
-            array('%s', '%s', '%s', '%s', '%s', '%s'),
-            array('%d')
-        );
-        
-        if ($updated !== false) {
-            wp_send_json_success(array('message' => __('Record updated successfully', 'ho-tracking')));
-        } else {
-            wp_send_json_error(array('message' => __('Failed to update record', 'ho-tracking')));
+    public function elementor_enqueue_scripts() {
+        // Only enqueue if not already enqueued
+        if (!wp_script_is('ho-tracking-frontend', 'enqueued')) {
+            wp_enqueue_script('ho-tracking-frontend', HO_TRACKING_PLUGIN_URL . 'assets/js/frontend.js', array('jquery'), HO_TRACKING_VERSION, true);
+            $this->localize_frontend_script();
         }
     }
 }
